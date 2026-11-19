@@ -1,0 +1,56 @@
+{
+  "id": "gfx-research-ambient-occlusion",
+  "kind": "ao",
+  "title": "Ambient Occlusion",
+  "methods": [
+    "slab-thin",
+    "slab-mid",
+    "slab-thick",
+    "local-support",
+    "horizon",
+    "pooled-support"
+  ],
+  "method_labels": [
+    "Thin slab",
+    "Medium slab",
+    "Thick slab",
+    "Local surface support",
+    "Tangent-frame horizon",
+    "Pooled neighbor support"
+  ],
+  "scenes": [
+    "contacts",
+    "slats",
+    "cavity",
+    "frustum-edge",
+    "empty-plane"
+  ],
+  "scene_labels": [
+    "Contact objects",
+    "Thin rails",
+    "Recessed steps",
+    "Frustum edge",
+    "Isolated plane"
+  ],
+  "views": [
+    "oblique",
+    "reverse",
+    "grazing"
+  ],
+  "parameters": [
+    0.75,
+    1.5
+  ],
+  "parameter_label": "Radius (world units)",
+  "budgets": [
+    8,
+    24
+  ],
+  "baseline": 1,
+  "candidate": 3,
+  "primary_metric": "edge_mae",
+  "primary_scene": 1,
+  "primary_parameter": 1.5,
+  "guardrail": "contact_mae",
+  "guardrail_label": "contact MAE"
+}
