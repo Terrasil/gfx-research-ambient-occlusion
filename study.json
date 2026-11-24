@@ -8,7 +8,10 @@
     "slab-thick",
     "local-support",
     "horizon",
-    "pooled-support"
+    "pooled-support",
+    "rotational-support",
+    "slab-0p40",
+    "slab-0p55"
   ],
   "method_labels": [
     "Thin slab",
@@ -16,21 +19,28 @@
     "Thick slab",
     "Local surface support",
     "Tangent-frame horizon",
-    "Pooled neighbor support"
+    "Pooled neighbor support",
+    "Eight-neighbor directional support",
+    "Constant slab 0.40 R",
+    "Constant slab 0.55 R"
   ],
   "scenes": [
     "contacts",
     "slats",
     "cavity",
     "frustum-edge",
-    "empty-plane"
+    "empty-plane",
+    "slats-tilted-22",
+    "slats-tilted-47"
   ],
   "scene_labels": [
     "Contact objects",
     "Thin rails",
     "Recessed steps",
     "Frustum edge",
-    "Isolated plane"
+    "Isolated plane",
+    "Thin rails tilted 22 degrees",
+    "Thin rails tilted 47 degrees"
   ],
   "views": [
     "oblique",
@@ -44,7 +54,10 @@
   "parameter_label": "Radius (world units)",
   "budgets": [
     8,
-    24
+    12,
+    16,
+    24,
+    32
   ],
   "baseline": 1,
   "candidate": 3,
@@ -52,5 +65,21 @@
   "primary_scene": 1,
   "primary_parameter": 1.5,
   "guardrail": "contact_mae",
-  "guardrail_label": "contact MAE"
+  "guardrail_label": "contact MAE",
+  "study_controls": [
+    "slab-thin",
+    "slab-mid",
+    "slab-0p40",
+    "slab-0p55",
+    "slab-thick"
+  ],
+  "calibration_scenes": [
+    "contacts",
+    "slats"
+  ],
+  "study_candidates": [
+    "local-support",
+    "pooled-support",
+    "rotational-support"
+  ]
 }

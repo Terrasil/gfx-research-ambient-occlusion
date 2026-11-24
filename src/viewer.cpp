@@ -251,9 +251,9 @@ private:
         if(!visible) return;
         const auto* vp=ImGui::GetMainViewport();
         ImGui::SetNextWindowPos({vp->WorkPos.x+12,vp->WorkPos.y+12},ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize({448,0},ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSizeConstraints({std::min(448.0f,std::max(260.0f,vp->WorkSize.x-24)),0},{680,std::max(180.0f,vp->WorkSize.y-24)});
-        if(!ImGui::Begin(study::title,nullptr,ImGuiWindowFlags_AlwaysAutoResize)) {ImGui::End();return;}
+        ImGui::SetNextWindowSize({448,std::min(800.0f,std::max(320.0f,vp->WorkSize.y-24))},ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSizeConstraints({380,320},{650,std::max(320.0f,vp->WorkSize.y-24)});
+        if(!ImGui::Begin(study::title)) {ImGui::End();return;}
         if(table("status")) {
             field("GPU",[&]{ImGui::TextWrapped("%s",gpuName.c_str());});
             field("Frame rate",[&]{ImGui::Text("%.0f FPS (%.2f ms)",fps(),cpu_frame_milliseconds());});
@@ -288,11 +288,19 @@ private:
         if(!runDir.empty() && ImGui::SmallButton("Copy output path")) ImGui::SetClipboardText(utf8(runDir).c_str());
         ImGui::BeginDisabled(active);
         if(ImGui::BeginTabBar("study-tabs")) {
-            if(ImGui::BeginTabItem("Experiment")) {
+            if(ImGui::BeginTabItem("Effect")) {
                 if(table("methods")) {
                     field("Method",[&]{ ImGui::Combo("##method",&method,study::methodLabels,int(std::size(study::methodLabels))); });
-                    const char* budgets[]={budgetText(0),budgetText(1)};
-                    field("Budget",[&]{ ImGui::Combo("##budget",&budgetIndex,budgets,2); });
+                    field("Budget",[&]{
+                        const std::string preview = std::to_string(study::budgets[budgetIndex]);
+                        if (ImGui::BeginCombo("##budget",preview.c_str())) {
+                            for (std::size_t i = 0; i < std::size(study::budgets); ++i) {
+                                if (ImGui::Selectable(std::to_string(study::budgets[i]).c_str(), budgetIndex == static_cast<int>(i)))
+                                    budgetIndex = static_cast<int>(i);
+                            }
+                            ImGui::EndCombo();
+                        }
+                    });
                     std::string p0=parameterLabel(0),p1=parameterLabel(1);
                     const char* values[]={p0.c_str(),p1.c_str()};
                     field(study::parameter,[&]{ ImGui::Combo("##parameter",&parameterIndex,values,2); });
@@ -303,10 +311,14 @@ private:
             }
             if(ImGui::BeginTabItem("Scene")) {
                 ImGui::Combo("Scene",&scene,study::sceneLabels,int(std::size(study::sceneLabels)));
-                ImGui::Combo("Camera",&view,study::viewLabels,int(std::size(study::viewLabels)));
                 const char* modes[]={"Shaded scene","Effect only","Traversal work"};
                 ImGui::Combo("View",&display,modes,reference?2:3);
                 if(reference && display==2) display=1;
+                ImGui::EndTabItem();
+            }
+            if(ImGui::BeginTabItem("Camera")) {
+                ImGui::Combo("Camera preset",&view,study::viewLabels,int(std::size(study::viewLabels)));
+                ImGui::TextDisabled("Preset views are reused by the benchmark.");
                 ImGui::EndTabItem();
             }
             if(ImGui::BeginTabItem("Tests",nullptr,selectTests?ImGuiTabItemFlags_SetSelected:0)) {
@@ -315,7 +327,7 @@ private:
             selectTests=false;
             if(ImGui::BeginTabItem("Capture")) {
                 if(ImGui::Button("Save clean PNG (F9)")) save=true;
-                testButtons(); ImGui::EndTabItem();
+                ImGui::TextDisabled("F9 saves the present view without UI."); ImGui::EndTabItem();
             }
             ImGui::EndTabBar();
         }
@@ -324,8 +336,8 @@ private:
     }
     static bool table(const char* id) {
         if(!ImGui::BeginTable(id,2,ImGuiTableFlags_SizingStretchProp)) return false;
-        ImGui::TableSetupColumn("Parameter",ImGuiTableColumnFlags_WidthFixed,158);
-        ImGui::TableSetupColumn("Value");
+        ImGui::TableSetupColumn("Parameter",ImGuiTableColumnFlags_WidthStretch,0.42f);
+        ImGui::TableSetupColumn("Value",ImGuiTableColumnFlags_WidthStretch,0.58f);
         return true;
     }
     template<class Control> static void field(const char* label, Control&& control) {
@@ -333,10 +345,6 @@ private:
         ImGui::AlignTextToFramePadding(); ImGui::TextUnformatted(label);
         ImGui::TableNextColumn(); ImGui::SetNextItemWidth(-1);
         control();
-    }
-    static const char* budgetText(int index) {
-        static const std::array<std::string,2> labels{std::to_string(study::budgets[0]),std::to_string(study::budgets[1])};
-        return labels[index].c_str();
     }
     static std::string parameterLabel(int index) {
         std::ostringstream s; s<<study::parameters[index]; return s.str();

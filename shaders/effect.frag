@@ -23,6 +23,13 @@ float localThickness(ivec2 xy, vec3 p) {
     float h=neighborSupport(xy,p,n,ivec2(-1,0))+neighborSupport(xy,p,n,ivec2(1,0));
     float v=neighborSupport(xy,p,n,ivec2(0,-1))+neighborSupport(xy,p,n,ivec2(0,1));
     float confidence=uMethod==5?.25*(h+v):.5*min(h,v);
+    if(uMethod==6) {
+        // Orientation ablation: four axes instead of two. Opposite-pair support
+        // uses the same point-to-plane/normal criteria as the archived method.
+        float d0=neighborSupport(xy,p,n,ivec2(-1,-1))+neighborSupport(xy,p,n,ivec2(1,1));
+        float d1=neighborSupport(xy,p,n,ivec2(-1,1))+neighborSupport(xy,p,n,ivec2(1,-1));
+        confidence=.5*max(max(h,v),max(d0,d1));
+    }
     return uParameter*mix(.06,.75,confidence*confidence);
 }
 bool screenBlocked(vec3 p,vec3 n,vec3 d) {
@@ -37,7 +44,9 @@ bool screenBlocked(vec3 p,vec3 n,vec3 d) {
         float cap=.25*uParameter;
         if(uMethod==0) cap=.06*uParameter;
         if(uMethod==2) cap=.75*uParameter;
-        if(uMethod==3 || uMethod==5) {
+        if(uMethod==7) cap=.40*uParameter;
+        if(uMethod==8) cap=.55*uParameter;
+        if(uMethod==3 || uMethod==5 || uMethod==6) {
             if(gap<=.06*uParameter) return true;
             cap=localThickness(xy,g.xyz);
         }

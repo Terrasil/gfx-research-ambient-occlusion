@@ -27,7 +27,7 @@ def make_plan(profile):
     }
     quality_size, time_sizes, views, spp, blocks, warmup, measured = options[profile]
     parameters = STUDY["parameters"]
-    budgets = STUDY["budgets"][:1] if profile == "smoke" else STUDY["budgets"]
+    budgets = STUDY["budgets"][:1] if profile == "smoke" else (STUDY["budgets"][::2] if profile == "quick" else STUDY["budgets"])
     quality, timing = [], []
     for scene in range(len(STUDY["scenes"])):
         for view in views:
@@ -43,13 +43,17 @@ def make_plan(profile):
                 key = f"{STUDY['scenes'][scene]}_{STUDY['views'][view]}_{token}"
                 common = dict(scene=scene, view=view, parameter=param)
                 quality.append(dict(id=key, size=list(quality_size), budgets=budgets, **common))
-                if scene not in ([0] if profile == "smoke" else [0, 1]) or param != parameters[-1]:
+                comparison_parameter = parameters[0] if metal else parameters[-1]
+                if null or view != 0 or param != comparison_parameter or (profile == "smoke" and scene != 0):
                     continue
-                for size in time_sizes:
+                sizes = [quality_size]
+                if profile != "smoke" and scene in (0, 1):
+                    sizes.extend(size for size in time_sizes if size != quality_size)
+                for size in sizes:
                     for budget in budgets:
                         timing.append(dict(id=f"{key}_{size[0]}x{size[1]}_b{budget}",
                                            size=list(size), budget=budget, **common))
-    return dict(schema=1, study=STUDY["id"], profile=profile, seed=17,
+    return dict(schema=2, study=STUDY["id"], profile=profile, seed=17,
                 reference_spp_per_shift=spp if STUDY["kind"] == "ao" else 1,
                 reference_shifts=2 if STUDY["kind"] == "ao" else 1,
                 blocks=blocks, warmup=warmup, measured=measured, quality=quality, timing=timing)

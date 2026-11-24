@@ -136,10 +136,14 @@ def analyze(root,paper,verify=True,manifest=None):
         lo,hi=interval(deltas)
         time_pairs.append(dict(case=key,delta_ms=statistics.mean(deltas),ci_low_ms=lo,ci_high_ms=hi,blocks=len(deltas)))
     table(folder/"paired_timing.csv",time_pairs)
+    from matched import write_comparisons
+    write_comparisons(folder, tables["quality"], tables["timing"], STUDY, plan["profile"])
     # Primary compare at high budget and second parameter. The tilted panel has zero wave slope.
     high=max(int(r["budget"]) for r in diffs)
     primary=[]
-    for scene in STUDY["scenes"][:-1]:
+    for scene in STUDY["scenes"]:
+        if scene in ("empty-plane", "empty-sky"):
+            continue
         p=0.0 if scene=="tilted-metal" else STUDY["primary_parameter"]
         values=[r["candidate_minus_baseline"] for r in diffs if r["scene"]==scene and
                 float(r["parameter"])==p and int(r["budget"])==high and r["candidate_minus_baseline"] is not None]
@@ -150,19 +154,28 @@ def analyze(root,paper,verify=True,manifest=None):
         v=[r["guardrail_delta"] for r in diffs if r["scene"]==scene and float(r["parameter"])==param
            and int(r["budget"])==high and r["guardrail_delta"] is not None]
         if v: guard_by_scene[scene]=statistics.mean(v)
-    main_values=[v for name,v in primary if name!="tilted-metal"]
+    families = defaultdict(list)
+    guard_families = defaultdict(list)
+    for scene,value in primary:
+        if scene=="tilted-metal":
+            continue
+        family = "slats" if scene.startswith("slats-tilted") else scene
+        families[family].append(value)
+        if scene in guard_by_scene:
+            guard_families[family].append(guard_by_scene[scene])
+    main_values = [statistics.mean(v) for v in families.values()]
     if not main_values: raise ValueError("No paired observations in the primary contrast")
     lo,hi=interval(main_values)
     delta=statistics.mean(main_values)
-    guard=statistics.mean(v for k,v in guard_by_scene.items() if k!="tilted-metal")
+    guard=statistics.mean(statistics.mean(v) for v in guard_families.values())
     dump(folder/"summary.json",dict(profile=plan["profile"],primary_metric=endpoint,
-         candidate_minus_baseline=delta,scene_bootstrap_95=[lo,hi],budget=high,scenes=dict(primary),guardrail=guardrail,guardrail_delta=guard,guardrail_by_scene=guard_by_scene))
+         candidate_minus_baseline=delta,scene_bootstrap_95=[lo,hi],scene_families={k:len(v) for k,v in families.items()},budget=high,scenes=dict(primary),guardrail=guardrail,guardrail_delta=guard,guardrail_by_scene=guard_by_scene))
     chosen=next(c for c in plan["quality"] if c["scene"]==STUDY["primary_scene"] and c["view"]==0
                 and c["parameter"]==STUDY["primary_parameter"])
     panel(root,chosen,high,folder/"comparison.png")
     # Exact fixed timing case for illustration; all other blocks and settings are in the CSV files.
     chosen_time=next(c for c in plan["timing"] if c["scene"]==(0 if plan["profile"]=="smoke" else 1)
-                     and c["view"]==0 and c["budget"]==high and c["size"]==plan["timing"][-1]["size"])
+                     and c["view"]==0 and c["budget"]==high and c["size"]==max((t["size"] for t in plan["timing"])))
     tr=next(r for r in time_pairs if r["case"]==chosen_time["id"])
     device=tex_text(manifest["device"]["GL_RENDERER"])
     kind="software rasterizer" if manifest["device"]["software_renderer"] else "reported graphics device"
@@ -171,14 +184,14 @@ def analyze(root,paper,verify=True,manifest=None):
            r"\begin{center}\small\begin{tabular}{lr}\toprule Scene & Paired difference \\ \midrule"]
     for scene,value in primary:
         lines.append(f"{tex_text(scene)} & {fmt(value)} "+r"\\")
-    lines.extend([r"\midrule",f"Equal-scene mean & {fmt(delta)} "+r"\\",r"\bottomrule\end{tabular}\end{center}",
-          f"The descriptive scene-resampling interval is [{fmt(lo)}, {fmt(hi)}].",
+    lines.extend([r"\midrule",f"Equal-family mean & {fmt(delta)} "+r"\\",r"\bottomrule\end{tabular}\end{center}",
+          f"The descriptive scene-family resampling interval is [{fmt(lo)}, {fmt(hi)}].",
           f"At {chosen_time['size'][0]} by {chosen_time['size'][1]} on {tex_text(chosen_time['id'].split('_')[0])},",
           f"the paired pass-time difference is {fmt(tr['delta_ms'])} ms",
           f"(block interval [{fmt(tr['ci_low_ms'])}, {fmt(tr['ci_high_ms'])}] ms).",
           r"\begin{center}\includegraphics[width=\linewidth]{generated/comparison.png}\end{center}",
           "Fixed oblique view of the thin-object scene. White in the error panel corresponds to 0.25 or greater in linear units."])
-    lines.extend([f"The equal-scene change in {STUDY['guardrail_label']} was {fmt(guard)}.",
+    lines.extend([f"The equal-family change in {STUDY['guardrail_label']} was {fmt(guard)}.",
                   "The tilted metal transfer scene is tabulated separately from the water-scene mean."
                   if STUDY["kind"]=="water" else "Contact is evaluated on annotated floor pixels."])
     (folder/"results.tex").write_text("\n".join(lines)+"\n",encoding="utf-8")
